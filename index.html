@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>五子棋｜玩家 vs 電腦</title>
+  <style>
+    canvas {
+      border: 2px solid #555;
+      background-color: #f0d9b5;
+      display: block;
+      margin: auto;
+    }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>五子棋｜玩家 vs 電腦（強化 AI）</h2>
+  <canvas id="board" width="570" height="570"></canvas>
+  <p id="status"></p>
+
+  <script>
+    const SIZE = 19;
+    const CELL = 30;
+    const board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    let gameOver = false;
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < SIZE; i++) {
+        ctx.beginPath();
+        ctx.moveTo(CELL / 2, CELL / 2 + i * CELL);
+        ctx.lineTo(CELL / 2 + (SIZE - 1) * CELL, CELL / 2 + i * CELL);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(CELL / 2 + i * CELL, CELL / 2);
+        ctx.lineTo(CELL / 2 + i * CELL, CELL / 2 + (SIZE - 1) * CELL);
+        ctx.stroke();
+      }
+    }
+
+    function drawPiece(x, y, color) {
+      ctx.beginPath();
+      ctx.arc(CELL / 2 + x * CELL, CELL / 2 + y * CELL, 10, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    function checkWin(x, y, role) {
+      const dirs = [
+        [1, 0], [0, 1], [1, 1], [1, -1]
+      ];
+      for (let [dx, dy] of dirs) {
+        let count = 1;
+        for (let dir of [-1, 1]) {
+          let nx = x + dx * dir, ny = y + dy * dir;
+          while (
+            nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE &&
+            board[ny][nx] === role
+          ) {
+            count++;
+            nx += dx * dir;
+            ny += dy * dir;
+          }
+        }
+        if (count >= 5) return true;
+      }
+      return false;
+    }
+
+    function evaluate(x, y, role) {
+      let score = 0;
+      const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+      for (let [dx, dy] of dirs) {
+        let count = 1;
+        for (let dir of [-1, 1]) {
+          let nx = x + dx * dir, ny = y + dy * dir;
+          while (
+            nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE &&
+            board[ny][nx] === role
+          ) {
+            count++;
+            nx += dx * dir;
+            ny += dy * dir;
+          }
+        }
+        if (count >= 5) score += 100000;
+        else if (count === 4) score += 10000;
+        else if (count === 3) score += 1000;
+        else if (count === 2) score += 100;
+      }
+      return score;
+    }
+
+    function aiMove() {
+      let bestScore = -1;
+      let bestMove = null;
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          if (!board[y][x]) {
+            let score = evaluate(x, y, "O") + evaluate(x, y, "X") * 0.8;
+            if (score > bestScore) {
+              bestScore = score;
+              bestMove = { x, y };
+            }
+          }
+        }
+      }
+      if (bestMove) {
+        board[bestMove.y][bestMove.x] = "O";
+        drawPiece(bestMove.x, bestMove.y, "white");
+        if (checkWin(bestMove.x, bestMove.y, "O")) {
+          gameOver = true;
+          document.getElementById("status").innerText = "😈 電腦獲勝！";
+        }
+      }
+    }
+
+    canvas.addEventListener("click", (e) => {
+      if (gameOver) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.round((e.clientX - rect.left - CELL / 2) / CELL);
+      const y = Math.round((e.clientY - rect.top - CELL / 2) / CELL);
+      if (x >= 0 && x < SIZE && y >= 0 && y < SIZE && !board[y][x]) {
+        board[y][x] = "X";
+        drawPiece(x, y, "black");
+        if (checkWin(x, y, "X")) {
+          gameOver = true;
+          document.getElementById("status").innerText = "🎉 你獲勝了！";
+        } else {
+          setTimeout(aiMove, 300);
+        }
+      }
+    });
+
+    drawBoard();
+  </script>
+</body>
+</html>
